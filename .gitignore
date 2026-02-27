@@ -1,0 +1,6 @@
+# macOS
+.DS_Store
+
+# Ignore everything inside data
+data/
+

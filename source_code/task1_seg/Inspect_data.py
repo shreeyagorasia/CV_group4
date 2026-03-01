@@ -21,7 +21,7 @@ ROOT = PROJECT_ROOT / "data" / "Dataset_Splits"
 
 for split in ["train", "validation", "test"]:
 
-    print("\n====", split.upper(), "====")
+    print("\n", split.upper())
 
     image_dir = ROOT / split / "image"
     tissue_dir = ROOT / split / "tissue"
@@ -32,25 +32,38 @@ for split in ["train", "validation", "test"]:
     print("Number of images:", len(tif_files))
     print("Number of label files:", len(geo_files))
 
-    # ---- look at ONE image per split ----
+    # looking at ONE image per split
     if tif_files:
         img = tiff.imread(tif_files[0])
         print("Example image:", tif_files[0].name)
         print("Image shape:", img.shape)
         print("Image dtype:", img.dtype)
         print("Pixel min/max:", int(img.min()), int(img.max()))
+        
+        with open(geo_files[0]) as f:
+            data = json.load(f)
+        print(data["features"][0])
 
+        # check if selected image is RGBA
         if img.ndim == 3 and img.shape[2] == 4:
             alpha = img[:, :, 3]
             print("Alpha min/max:", int(alpha.min()), int(alpha.max()))
             print("Unique alpha values:", len(np.unique(alpha)))
 
+
     # ---- scan ALL label files in this split ----
     for gf in geo_files:
         with open(gf) as f:
-            data = json.load(f)
+            data = json.load(f) # load GeoJSON and load as python dict
 
-        for feat in data.get("features", []):
+        # Each GeoJSON file contains a list of annotated regions under "features".
+        # Each feature represents one labeled tissue region (a polygon)
+        # inside the image, with:
+        #   - geometry → the coordinates of the region
+        #   - properties → metadata including the tissue class name.
+
+        # loop through all features to extract the class labels and count no. each tissue type
+        for feat in data.get("features", []): 
             props = feat.get("properties", {})
             if isinstance(props.get("classification"), dict):
                 name = props["classification"].get("name", "")
@@ -61,7 +74,7 @@ for split in ["train", "validation", "test"]:
                 all_classes.add(name)
                 class_counts[name] += 1
 
-print("\n==== OVERALL DATASET LABEL CLASSES (ALL SPLITS) ====")
+print("\n OVERALL DATASET LABEL CLASSES (ALL SPLITS)")
 print("All unique tissue classes:")
 for c in sorted(all_classes):
     print(" -", c)
@@ -69,7 +82,6 @@ for c in sorted(all_classes):
 print("\nTotal polygon count per class:")
 for c, n in class_counts.most_common():
     print(f"{c}: {n}")
-
 
 
 
